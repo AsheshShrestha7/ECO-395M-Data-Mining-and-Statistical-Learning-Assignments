@@ -1,0 +1,504 @@
+---
+title: "HW1"
+author: "Ashesh Shrestha"
+date: "2/6/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+```
+
+# ECO 395: Exercise 1
+
+## 1) Data visualization: gas prices
+
+```{r, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(ggplot2)
+GasPrices <- read.csv("~/Documents/Data Mining/ECO395M-master/data/GasPrices.csv")
+```
+
+### A) Theory: Gas stations charge more if they lack direct competition in sight.
+```{r, echo=FALSE, message=FALSE}
+ggplot(data=GasPrices)+
+  geom_boxplot(aes(x=Competitors, y= Price))+
+  labs(
+    title= "Figure 1.1 Gas stations charge more if they lack direct competition in sight",
+    x= "Competition in sight (No/Yes)",
+    y= "Gas price (in USD)"
+  )
+```
+
+The theory states that Gas stations charge more if they lack direct competition in sight. In order to test the theory, I have made a boxplot using the data set which contains data from 101 gas stations in the Austin area collected in 2016. We can see that the median price of gas stations which do not have direct competition in sight is higher than the median price of gas station which have direct competition in sight. Therefore, we can conclude that the theory that Gas stations charge more if they lack direct competition in sight is supported by the data.
+
+
+### B) Theory: The richer the area, the higher the gas price.
+```{r, echo=FALSE, message=FALSE}
+ggplot(data=GasPrices)+
+  geom_point(mapping= aes(x= Income, y= Price))+
+  geom_smooth(method=lm, se =FALSE, aes(x= Income, y= Price))+
+  labs(
+    title= "Figure 1.2 The richer the area, the higher the gas price",
+    x= "Median Household Income (in USD)",
+    y= "Gas price (in USD)"
+    )
+```
+
+
+The theory states that the richer the area, the higher the gas price. In order to test the theory, on the basis of data on gas prices, I have plotted a scatterplot of gas prices of various gas stations against median household income of the people where those gas stations are located. However, as it was difficult to figure out the relationship between  median household income and gas prices just by looking the scatterplot, I have fitted a linear regression line to the plot. The positive slope of the linear regression line indicates the positive relationship between median household income and gas price, thus supporting the theory that the richer the area, the higher the gas price.
+
+### C) Theory: Shell charges more than other brands.
+```{r, echo= FALSE, message= FALSE}
+F1= GasPrices%>%
+  group_by(Brand)%>%
+  summarize (total_count= n(),
+      mean_price = mean(Price))
+  
+ggplot(data=F1)+
+  geom_col(mapping= aes(x= Brand, y= mean_price))+
+  labs(
+    title="Figure 1.3 Brand and their average prices",
+    x= "Brand",
+    y= "Average Price (in USD)"
+  )
+```
+
+The theory states that Shell charges more than other brands. In order to test the theory, I have made a bar plot showing average price charged by different brands. As seen in the bar plot, averaged price charged by both Shell and Chevron-Texaco are equal and higher that the one charged by ExxonMobil and other brands.  Hence, we can reject the theory that Shell charges more than other brands
+
+### D) Theory: Gas stations at stoplights charge more.
+```{r, echo= FALSE, message= FALSE}
+ggplot(data= GasPrices)+
+  geom_histogram(mapping= aes(x= Price),binwidth= .010)+
+  facet_wrap(~Stoplight, nrow=1)+
+  labs(
+    title= "Figure 1.4 Do gas stations at stoplight charge more ?",
+    x= "Price (in USD)",
+    y= "Number of Gas stations"
+    )
+```
+
+The theory states that gas stations at stoplights charge more. In order to test the theory I have made a histogram depicting number of gas stations which are charging different prices faceted by whether they are at stoplights or not.  As most number of gas stations whether they are at stoplights or not charge between 1.79 USD to 1.89 USD, we cannot support the theory that gas stations at stoplights charge more. 
+
+### E) Theory: Gas stations with direct highway access charge more 
+```{r, echo= FALSE, message= FALSE}
+ggplot(data=GasPrices)+
+  geom_boxplot(aes(x=Highway, y= Price))+
+  labs(
+    title= "Figure 1.5 Gas stations with direct highway access charge more",
+    x= "Has direct highway access (N/Y)",
+    y= "Price (in USD)"
+  )
+```
+
+The theory states that gas stations with direct highway access charge more. I have made boxplots for comparing median price of stations with direct highway access with the median price of those without direct highway access. As we can see that median price of highways with direct access to highway is higher that without direct access, we can conclude that the data supports the theory.
+
+## 2) Data visualization: a bike share network
+
+```{r, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(ggplot2)
+bikeshare <- read.csv("~/Documents/Data Mining/ECO395M-master/data/bikeshare.csv")
+```
+
+### Plot A: a line graph showing average bike rentals (total) versus hour of the day (hr).
+```{r, message=FALSE, echo=FALSE}
+B1=bikeshare%>%
+  group_by(hr)%>%
+  summarize(mean_total= mean(total))
+ggplot(data=B1)+
+  geom_line(mapping=aes(x= hr, y=mean_total))+
+  labs(
+    title="Figure 2.1 Average bike rentals in each hour of the day",
+    x= "Hour of the day",
+    y= "Average bike rentals"  
+    )
+```
+
+The Figure 2.1 depicts the average bike rentals during each hour of the day using the data set of two-year historical log (2011 and 2012) from Capital Bikeshare system in Washington DC. The X-axis measures the hour of the day, 0 through 23 and the Y-axis measures the average number of bikes rental during those hours. As  can be seen in the plot, the average bike rentals declines steadily until the 4 am hour and reaches close to zero before increasing rapidly until 8 am hour. After reaching about 360 at 8 am hour, there is a sudden decline in average bike rentals which continues till 10 am hour. From 10 am  hour, even though bike rentals increase,  it does not increase by much until 3 pm hour of the day. The average bike rental sharply ascends and reaches its peak amounting to 460 at around 5 pm hour. Starting from 5 pm hour, the average biker rental continuously plunges and reaches about 80 at the end of the day. To conclude, the average ridership during the start of the business hours and end of the business hours are very high, whereas, the ridership between those hours is moderate.
+
+### Plot B: a faceted line graph showing average bike rentals versus hour of the day, faceted according to whether it is a working day 
+```{r, message=FALSE, echo=FALSE}
+B2=bikeshare%>%
+  group_by(hr, workingday)%>%
+  summarize(mean_total= mean(total))
+ggplot(data=B2)+
+  geom_line(mapping=aes(x= hr, y=mean_total))+
+  facet_wrap(~workingday, nrow=1)+
+  labs(
+    title= "Figure 2.2 Average bike rental in each hour of the day (non-working day v working day)",
+    x= "Hour of the day",
+    y= "Average bike rentals"
+    )
+```
+
+The figure 2.2 shows the average bike rentals during each hour of the day faceted according to whether it is a working day or not. The X-axis measures the hour of the day, 0 through 23 and the Y-axis measures the average number of bike rentals during those hours. If we compare average bike rentals during first four hours of the day of non-working day with that of working day, we can see that average bike rentals are plummeting  during both kind of days. However, the average bike rentals during non-working days are relatively higher than that in working days. The average bike rentals start rising up starting at 4 am hour both during non-working and working days, but the rise is steeper during working days.  During non-working days, the average bike rentals reaches highest to about 370 at 1 pm hour of the day, after which it continuously decline. Whereas, during working days, the average bike rentals escalates starting at 4 am hour until it reaches 470 during 8 am hour. Again, there is a sharp decline at the rate equivalent to the rise. The decline persists until 10 am hour of the day. Then, we can see a significant rise beginning at 3 pm hour which lasts for 2 hours until 5 pm of the day starting from which it continuously decreases till the end of the day. In conclusion, bike ridership during different hours of the day depends on whether it is a working day or a non-working day. 
+
+### Plot C: a faceted bar plot showing average ridership during the 8 AM hour by weather situation code (weathersit), faceted according to whether it is a working day or not.
+```{r, message=FALSE, echo=FALSE}
+Eight_AM_hr= bikeshare%>%
+  filter(hr==8)
+B3= Eight_AM_hr%>%
+  group_by(weathersit, workingday)%>%
+  summarize(mean_ridership= mean(total))
+ggplot(data=B3)+
+  geom_col(mapping=aes(x=weathersit, y= mean_ridership))+
+  facet_wrap(~workingday, nrow=1)+
+  labs(
+    title= "Figure 2.3 Average ridership during 8 am hour by weather situation (non-working day v working day)",
+    x= "Weather situation",
+    y= "Average ridership during 8 am hour"
+  )
+```
+
+The figure 2.3 shows the average ridership during 8 am hour of the day by weather situation faceted according to whether it is a working day or not. The X -axis shows various weather situations; 1= Clear, Few clouds, Partly cloudy, Partly cloudy, 2= Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist, 3= Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds, 4=  Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog, and the Y-axis measures the average bike ridership during 8 am hour of the day. As seen in the bar plot, regardless whether it is a working day or not, the average ridership declines as weather worsens during 8 am hour. Moreover, the average ridership at 8 am hour of working day outnumbers average ridership at 8 am hour of non-working day, irrespective of the weather condition. In conclusion, both weather situation and type of day (working or non-working), affect bike ridership during 8 am hour of the day. In conclusion, average ridership during the beginning and end of the business hours are very high during working day, while, during other hours of the day, average ridership is higher during non-working days.
+
+## 3) Data visualization: flights at ABIA
+
+```{r, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(ggplot2)
+ABIA <- read.csv("~/Documents/Data Mining/ECO395M-master/data/ABIA.csv")
+```
+
+```{r, message=FALSE, echo=FALSE}
+A1= ABIA%>%
+  group_by(Month)%>%
+  summarize(mean_delay= mean(ArrDelay, na.rm =TRUE)) 
+ggplot(data=A1)+
+  geom_col(mapping= aes(x= factor(Month), y= mean_delay))+
+  labs(
+    title= "Figure 3.1 Average flight delays in various months of the year",
+    x="Month",
+    y="Average flight arrival delay"
+  )
+```
+
+In the Figure 3.1, we have months of the year, 1 through 12 in X-axis and average arrival delays of the flights in Y-axis. The bar plot shows the average arrival delays of the flights by month. We can see that during 9th, 10th and 11th month of the year, that is, September, October and November, the average flight delays are lowest with no delays during the month of September.  Hence, we can say that the best time of the year to fly to avoid delays would be during September, October and November
+
+```{r, message=FALSE, echo=FALSE}
+ 
+ABIA%>%
+  group_by(Dest)%>%
+  summarize(count= n())%>%
+  arrange(desc(count))
+popular_destinations = c('AUS', 'DAL', 'DFW', 'IAH', 'PHX', 'DEN', 'ORD', 'HOU', 'ATL')
+D1=ABIA%>%
+  filter(Dest %in% popular_destinations)%>%
+  group_by(Month, Dest)%>%
+  summarize(mean_delay= mean(ArrDelay, na.rm =TRUE))
+
+ggplot(data=D1)+
+  geom_col(mapping=aes(x= factor(Month), y= mean_delay))+
+  facet_wrap(~Dest, nrow=3)+
+  labs(
+    title= "Figure 3.2 Average flight delays in various months of the year 
+    faceted by popular destinations",
+    x= "Month",
+    y= "Averge flight arrival delay"
+  )
+```
+
+Now, to see whether this changes by destinations, I have faceted the bar plot by destination. As seen in the Figure 3.2, even when considering various destinations, we can see that September, October and November have low average arrival delays. Thus, we can conclude that this is the best time of the year to fly to minimize delays. 
+
+## 4) K-nearest neighbors
+
+```{r, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(rsample)  # for creating train/test splits
+library(caret)
+library(modelr)
+library(parallel)
+library(foreach)
+sclass <- read.csv("~/Documents/Data Mining/ECO395M-master/data/sclass.csv")
+```
+
+## For trim level 350
+
+```{r, message=FALSE, echo=FALSE}
+#Filtering by 350 trim
+Three_fifty = sclass%>%
+  filter(trim==350)
+
+#Splitting into training and testing set
+Three_fifty_split = initial_split(Three_fifty, prop=0.8)
+Three_fifty_train = training(Three_fifty_split)
+Three_fifty_test = testing(Three_fifty_split)
+```
+
+### K=2
+```{r, message=FALSE, echo=FALSE}
+knn2 = knnreg(price ~ mileage, data=Three_fifty_train, k =2)
+
+#plot the fit#
+#attach the prediction to the test data frame
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred2= predict(knn2, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred2), color= 'blue')
+```
+
+### K=5
+```{r, message=FALSE, echo=FALSE}
+knn5 = knnreg(price ~ mileage, data=Three_fifty_train, k =5)
+
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred5= predict(knn5, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred5), color= 'blue')
+
+```
+
+### K=10
+```{r, message=FALSE, echo=FALSE}
+knn10 = knnreg(price ~ mileage, data=Three_fifty_train, k =10)
+
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred10= predict(knn10, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred10), color= 'blue')
+```
+
+
+
+### K=25
+```{r, message=FALSE, echo=FALSE}
+knn25 = knnreg(price ~ mileage, data=Three_fifty_train, k =25)
+
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred25= predict(knn25, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred25), color= 'blue')
+```
+
+### K=50
+```{r, message=FALSE, echo=FALSE}
+knn50 = knnreg(price ~ mileage, data=Three_fifty_train, k =50)
+
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred50= predict(knn50, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred50), color= 'blue')
+```
+
+### K=75
+```{r, message=FALSE, echo=FALSE}
+knn75 = knnreg(price ~ mileage, data=Three_fifty_train, k =75)
+
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred75= predict(knn75, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred75), color= 'blue')
+```
+
+### K=100
+```{r, message=FALSE, echo=FALSE}
+knn100 = knnreg(price ~ mileage, data=Three_fifty_train, k =100)
+
+Three_fifty_test = Three_fifty_test %>%
+  mutate(price_pred100= predict(knn100, Three_fifty_test))
+
+p_test350 = ggplot(data = Three_fifty_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test350 + geom_line(mapping= aes(x = mileage , y = price_pred100), color= 'blue')
+```
+
+```{r, message=FALSE, echo=FALSE}
+#Out of sample RMSE for different values of K
+k_grid_35 = c(2, 5, 10, 25, 50, 75, 100)
+rmse_35test = foreach(k= k_grid_35, .combine='c') %do% {
+  # train the model and calculate RMSE on the test set
+  knn_model = knnreg(price ~ mileage, data=Three_fifty_train, k=k, use.all=TRUE)
+  modelr::rmse(knn_model, Three_fifty_test)
+}
+
+#RMSE v K plot
+rmse_data = data.frame(k_grid_35, rmse_35test)
+ggplot(data= rmse_data)+
+  geom_line(mapping= aes(x=k_grid_35, y=rmse_35test))+
+  labs(
+    title= "RMSE for different values of K",
+    x= "K",
+    y= "RMSE"
+  )
+
+#plot of fitted model, i.e. predictions v x for optimal K= 50 for trim 350
+ggplot(data = Three_fifty_test)+
+  geom_line(mapping= aes(x= mileage, y= price_pred50))+
+  labs(
+    title= "Prediction of the model with optimal value value of k=50",
+    x= "mileage",
+    y= "price"
+  )
+```
+
+## For trim level 65AMG
+```{r, message=FALSE, echo=FALSE}
+#Filtering by 65AMG trim
+Sixtyfive_AMG = sclass%>%
+  filter(trim=='65 AMG')
+
+#Splitting into training and testing set
+Sixtyfive_AMG_split = initial_split(Sixtyfive_AMG, prop=0.8)
+Sixtyfive_AMG_train = training(Sixtyfive_AMG_split)
+Sixtyfive_AMG_test = testing(Sixtyfive_AMG_split)
+```
+
+###  K=2
+```{r, message=FALSE, echo=FALSE}
+knn2 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =2)
+
+#plot the fit#
+#attach the prediction to the test data frame
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred2= predict(knn2, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred2), color= 'blue')
+```
+
+### K=5
+```{r, message=FALSE, echo=FALSE}
+knn5 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =5)
+
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred5= predict(knn5, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred5), color= 'blue')
+```
+
+### K=10
+```{r, message=FALSE, echo=FALSE}
+knn10 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =10)
+
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred10= predict(knn10, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred10), color= 'blue')
+```
+
+### K=25
+```{r, message=FALSE, echo=FALSE}
+knn25 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =25)
+
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred25= predict(knn25, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred25), color= 'blue')
+```
+
+### K=50
+```{r, message=FALSE, echo=FALSE}
+knn50 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =50)
+
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred50= predict(knn50, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred50), color= 'blue')
+```
+
+### K=75
+```{r, message=FALSE, echo=FALSE}
+knn75 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =75)
+
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred75= predict(knn75, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred75), color= 'blue')
+```
+
+### K=100
+```{r, message=FALSE, echo=FALSE}
+knn100 = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k =100)
+
+Sixtyfive_AMG_test = Sixtyfive_AMG_test %>%
+  mutate(price_pred100= predict(knn100, Sixtyfive_AMG_test))
+
+p_test65AMG = ggplot(data = Sixtyfive_AMG_test)+
+  geom_point(mapping= aes(x= mileage, y= price), alpha =0.2)+
+  xlim(0,150000)
+
+p_test65AMG + geom_line(mapping= aes(x = mileage , y = price_pred100), color= 'blue')
+```
+
+```{r, message=FALSE, echo=FALSE}
+#Out of sample RMSE for different values of K
+k_grid_65AMG = c(2, 5, 10, 25, 50, 75, 100)
+rmse_65AMGtest = foreach(k= k_grid_65AMG, .combine='c') %do% {
+  # train the model and calculate RMSE on the test set
+  knn_model = knnreg(price ~ mileage, data=Sixtyfive_AMG_train, k=k, use.all=TRUE)
+  modelr::rmse(knn_model, Sixtyfive_AMG_test)
+}
+
+#RMSE v K plot
+rmse_data1 = data.frame(rmse_65AMGtest, rmse_65AMGtest)
+ggplot(data1= rmse_data1)+
+  geom_line(mapping= aes(x=k_grid_65AMG, y=rmse_65AMGtest))+
+  labs(
+    title= "RMSE for different values of K",
+    x= "K",
+    y= "RMSE"
+  )
+
+#plot of fitted model, i.e. predictions v x for optimal K= 5 for trim 54AMG
+ggplot(data = Sixtyfive_AMG_test)+
+geom_line(mapping= aes(x= mileage, y= price_pred5))+
+  labs(
+    title= "Prediction of the model with optimal value value of K=5",
+    x= "mileage",
+    y= "price"
+  )
+```
+Trim size 350 yields a larger optimal value of K. RMSE differs from one train/test split to another. In this particular random assignment of data into training and testing data in the ratio of 80:20, it so happened that for trim size 350, larger value of K yielded lowest estimate of RMSE. 
