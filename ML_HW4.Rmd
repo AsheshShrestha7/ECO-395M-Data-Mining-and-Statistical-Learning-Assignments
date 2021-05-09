@@ -1,0 +1,485 @@
+---
+title: "HW 4"
+author: "Ashesh Shrestha"
+date: "5/8/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Clustering and PCA
+
+First of all I started by cleaning the data. I centered and scaled the data.
+
+```{r, message=FALSE, echo=FALSE}
+library(ggplot2)
+library(foreach)
+library(mosaic)
+library(tidyverse)
+library(ggcorrplot)
+
+wine <- read.csv("~/Documents/GitHub/ECO395M/data/wine.csv")
+
+#Center and scale the data
+X= wine[, 1:11]
+X= scale(X, center=TRUE, scale= TRUE)
+
+# Extract the centers and scales from the rescaled data (which are named attributes)
+mu = attr(X,"scaled:center")
+sigma = attr(X,"scaled:scale")
+```
+
+Then, I applied k-means technique for clustering. I used k =2 as there were 2 types of wine by color, red and white, with 25 starts. In order to see if the k-means has clustered data points by wine color into red and white wine, I compare the averages of chemical properties for white wine and red wine in our original data with that of the clustered data.
+
+
+```{r, message=FALSE, echo=FALSE}
+
+# Run k-means with 2 clusters and 25 starts
+cluster1 = kmeans(X, 2, nstart=25)
+
+# Average values of all the chemical properties grouped by red or white
+options(dplyr.width =Inf)
+wine%>%
+  group_by(color)%>%
+  summarize_all(mean)
+
+# Average values of all the chemical properties grouped by cluster
+cluster1$center[1,]*sigma + mu
+cluster1$center[2,]*sigma + mu
+```
+
+If we compare averages of the chemical properties of red and white wine in our original data with the averages of chemical properties of red and white wine in clustered data, we can see that averages of chemical properties for red wine in both original and k-means clustered data are almost the same. Similarly, that averages of chemical properties for white wine are also pretty much the same in both original and clustered data. This hints towards the fact that k-means is easily capable of distinguishing the red wines from the white ones. 
+
+To further verify this, I have also made a confusion matrix. In the table, we can see that k-means has pretty accurately clustered data by wine color. With an accuracy of 98.5%, we can conclude that k-means clustering has done a very good job in terms of dimension reduction
+
+```{r, message=FALSE, echo=FALSE}
+wine[cluster1$cluster==1, 'cluster'] <- "red_hat"
+wine[cluster1$cluster==2, 'cluster'] <- "white_hat"
+
+table1 = xtabs(~color+cluster, data=wine) 
+print(table1)
+
+sum(diag(table1))/sum(table1)
+
+```
+
+
+After, k-means, I proceeded to perform Principal Component Analysis (PCA). As seen in the table below, the first three principal components form 64.3% of the total variance in the data set, which is significantly high. Hence, I used first three components to perform clustering.
+
+```{r, message=FALSE, echo=FALSE}
+#PCA
+wine <- read.csv("~/Documents/GitHub/ECO395M/data/wine.csv")
+X= wine[, 1:11]
+X= scale(X, center=TRUE, scale= TRUE)
+
+PCAwine = prcomp(X, scale= TRUE)
+summary(PCAwine)
+```
+
+
+```{r, message=FALSE, echo=FALSE}
+round(PCAwine$rotation[,1:3], 2)
+
+scores = PCAwine$x[,1:3]
+
+cluster_pca = kmeans(scores, 2, nstart=25)
+
+qplot(scores[,1], scores[,2], data=wine, color=factor(cluster_pca$cluster))
+
+wine[cluster_pca$cluster==1, 'cluster'] <- "red_hat"
+wine[cluster_pca$cluster==2, 'cluster'] <- "white_hat"
+
+table2 = xtabs(~color+cluster, data =wine) 
+print(table2)
+sum(diag(table2))/sum(table2)
+```
+
+The clustering done by using the scores from three principal components also did a good job. The accuracy level stood at 98.3 %. But, PCA is not as straight forward as k-means. I used the scores from the principal components to form the clusters. As the accuracy of k-means is relatively higher and it is straight forward, I conclude that it makes more sense to use k-means technique for the given data.
+
+The quality of wine is being rated in a scale of 1-10, however, in our data set there is no rating of 1,2 or 10. Thus, the wine in our data set was rated between 2 and 9 inclusive. I performed k-means with k= 7 and 25 starts. 
+
+```{r, message=FALSE, echo=FALSE, warning = FALSE}
+cluster2 = kmeans(X, 7, nstart=25)
+
+table3 = xtabs(~wine$quality + cluster2$cluster)
+print(table3)
+```
+
+We can see in the confusion matrix that k-means clustering has not been able to clearly distinguish between different qualities of wine. For example, all of the clusters have significant number of wines rated 5, 6 and 7. There is no clear distinction.
+
+## Market Segmentation
+
+First of all I started by cleaning the data set. The data set originally contained 7,882  data points and 36 variables.
+
+As there are lots of spam and pornography bots, I filtered out all the users whose tweet fell into ‘spam’ and ‘adult’ category. Then I deleted ‘spam’ and ‘adult’ variables form the data set. I also excluded  ‘uncategorized’ and. ‘chatter’ variables from the data set as they did not seem to provide any insights in my analysis. So, I ended up with 32 variables and 7,309 data points. 
+
+
+```{r, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(foreach)
+library(LICORS)
+library(cluster)
+library(corrplot)
+
+social_marketing <- read.csv("~/Documents/GitHub/ECO395M/data/social_marketing.csv")
+
+social_marketing = filter(social_marketing, spam == 0)
+social_marketing = filter(social_marketing, adult == 0)
+social_marketing = social_marketing %>% select(- chatter, - uncategorized, -spam, -adult)
+
+#k-means++
+#center and scale the data
+Z= scale(social_marketing[, 2:33], scale=TRUE, center=TRUE)
+
+#Extract the centers and scales from the rescaled data
+mu = attr(Z, "scaled:center")
+sigma = attr(Z, "scaled:scale")
+```
+
+In order to identify market segments, I performed cluster analysis. Since the data did not show any kinds of hierarchy, I resorted to K-means cluster analysis. I have used K-means++ .
+
+For using K-means clustering we need to find the optimal number of clusters or the value of K. In order to find the optimal value of K , I have used Elbow plot and CH index.
+
+### Figure 2.1 Elbow Plot 
+```{r, message=FALSE, echo=FALSE}
+#Elbow plot for finding optimal k
+k_grid = seq(2, 25, by=1)
+SSE_grid = foreach(k= k_grid, .combine= 'c') %do% {
+  cluster_k = kmeanspp(Z, k, nstart = 25)
+  cluster_k$tot.withinss
+}
+
+plot(k_grid, SSE_grid)
+```
+
+### Figure 2.2 CH index plot
+```{r, message=FALSE, echo=FALSE}
+#CH index
+N = nrow(Z)
+CH_grid = foreach(k= k_grid, .combine= 'c') %do% {
+  cluster_k = kmeanspp(Z, k, nstart = 25)
+  W = cluster_k$tot.withinss
+  B = cluster_k$betweenss
+  CH = (B/W) * ((N-k)/ (k-1))
+  CH
+}
+
+plot(k_grid, CH_grid)
+```
+
+The optimal value of K is not clear from the graph. Nevertheless, these plots have hinted towards number 5. For further confirmation, I have plotted a correlogram and have tried to identify possible singularities among the variables.
+
+### Figure 2.3 Correlogram
+```{r, message=FALSE, echo=FALSE}
+C= cor(Z)
+corrplot(C, type = 'lower', method ='color', order = "hclust", hclust.method = "ward.D", tl.cex = 0.75, tl.col = "black")
+```
+
+From the correlogram, we can see that some subgroups of the variables are highly correlated with each other. The variables 'family', 'school', 'food', 'sports_fandom', 'religion' seems to be highly correlated. Likewise, 'Computers', 'travel', 'politics', 'news' and 'automotive' are correlated. 'Outdoors', 'health_nutrition' and 'personal_fitness' are correlated with each other. 'Sports_playing', 'online_gaming' and 'college_uni' are also correlated. Lastly, 'beauty', 'cooking' and 'fashion' also seem to have a significant correlation. Therefore, the correlogram corroborates that the optimal value of K is 5.
+
+```{r, message=FALSE, echo=FALSE}
+#using k =5
+cluster2 = kmeanspp(Z, 5, nstart=50)
+```
+
+### Summary of cluster 1
+```{r, message=FALSE, echo=FALSE}
+summary(cluster2$cluster==1)
+```
+
+### Summary of Cluster 2
+```{r, message=FALSE, echo=FALSE}
+summary(cluster2$cluster==2)
+```
+
+### Summary of Cluster 3
+```{r, message=FALSE, echo=FALSE}
+summary(cluster2$cluster==3)
+```
+
+### Summary of Cluster 4
+```{r, message=FALSE, echo=FALSE}
+summary(cluster2$cluster==4)
+```
+
+### Summary of Cluster 5
+```{r, message=FALSE, echo=FALSE}
+summary(cluster2$cluster==5)
+```
+
+
+### What are the clusters?
+```{r, message=FALSE, echo=FALSE, warning= FALSE}
+cluster2$center[1,]*sigma + mu
+cluster2$center[2,]*sigma + mu
+cluster2$center[3,]*sigma + mu
+cluster2$center[4,]*sigma + mu
+cluster2$center[5,]*sigma + mu
+```
+
+After running the k-means++ with K=5, I checked the number of data points in each cluster. The cluster with highest number of data points had 4454 data points. That is about 60 percent of the total number of data points I considered in the analysis. This cluster includes the people who have tweeted less than 2 times on an average in all the categories. This could mean that most of the followers of “NutrientH20” are not active users of “twitter” or social media in general. Despite  not being active users of social media, these people  are following “Nutrient20” which means that the current social media marketing strategy is working quite well.
+
+The cluster with the lowest number of people, on an average tweeted more about ‘photo sharing’, ‘cooking’, and ‘fashion’. Therefore, in order to attract and appeal to more of the people who are more interested in photo sharing, cooking and fashion the company should position their brand  in a way that it seems like it is related to photo sharing or cooking or fashion.
+
+
+## Association rules for grocery purchases
+```{r, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(arules)
+library(arulesViz)
+library(igraph)
+
+groceries <- read.transactions("~/Documents/GitHub/ECO395M/data/groceries.txt", header=FALSE, sep= ",")
+```
+
+```{r, message=FALSE, echo=FALSE, results = FALSE, warning= FALSE}
+groceries_rules= apriori(groceries,
+                         parameter = list(support= .01, confidence = .1, maxlen=2))
+```
+
+### Figure 3.1 Top 5 items with highest support
+```{r, message=FALSE, echo=FALSE}
+itemFrequencyPlot(groceries, topN=5)
+```
+
+In order to find various association rules I used ‘apriori’ function with support = 0.01, confidence= 0.1 and maximum length of 2. By doing so, I got a set of 339 rules. Then, I checked the items with highest support. As seen in the figure,  top 5 items with highest support are whole milk, other vegetables, rolls/buns, soda and yogurt.
+
+### Figure 3.2 Plot of Association rules
+```{r, message=FALSE, echo=FALSE}
+plot(groceries_rules, measure = c("support", "lift"), shading = "confidence")
+```
+
+In order to find strong associations, we need the association rules with high lift and high confidence. For picking up thresholds for lift and confidence, I made a plot of the association rules. As we can see in the figure 3.2, we do not have lot of points above the confidence of 0.3 and above the lift of  2. Therefore, I used threshold of 0.3 for the confidence and 2 for the lift. This give 9 association rules.
+
+```{r, message=FALSE, echo=FALSE}
+arules::inspect(subset(groceries_rules, lift > 2 & confidence > 0.3))
+```
+
+We can see that almost all of associations that make sense. The first association in table shows that onions implies other vegetables. These two items definitely go together.  Beef and root vegetables are also consumed together. Likewise, the association between hamburger meat and other vegetable also makes right sense.
+
+```{r, message=FALSE, echo=FALSE}
+sub1 =  subset(groceries_rules, subset = confidence > 0.25 & support > 0.005)
+saveAsGraph(sub1, file = 'groceries_rules.graphml')
+```
+
+### Figure 3.3 Groceries association rules 
+
+
+![Groceries rules](graph.png)
+
+The figure 3.3 can help us visualize the item sets. We can see other vegetables, butter milk, hamburger meat, onions form a set, which does make sense. Likewise, items like margarine, roll buns and frankfurter which are consumed together make a set.  Similarly, we can see that items like citrus fruit, yogurt and cream cheese are grouped together. From an association point of view, it also makes perfect sense. 
+
+## Author Attribution
+```{r, message=FALSE, echo=FALSE, results= FALSE, warning= FALSE}
+library(tm) 
+library(tidyverse)
+library(slam)
+library(proxy)
+library(randomForest)
+library(caret)
+library(nnet)
+readerPlain = function(fname){
+  readPlain(elem=list(content=readLines(fname)), 
+            id=fname, language='en') }
+
+file_list = Sys.glob('../Downloads/ReutersC50/C50train/*/*.txt')
+author = lapply(file_list, readerPlain)
+
+mynames = file_list %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+
+# Rename the articles
+mynames
+names(author) = mynames
+```
+
+```{r, message=FALSE, echo=FALSE, warning= FALSE}
+## once you have documents in a vector, you 
+## create a text mining 'corpus' with: 
+documents_raw = Corpus(VectorSource(author))
+
+## Some pre-processing/tokenization steps.
+## tm_map just maps some function to every document in the corpus
+my_documents = documents_raw
+my_documents = tm_map(my_documents, content_transformer(tolower)) # make everything lowercase
+my_documents = tm_map(my_documents, content_transformer(removeNumbers)) # remove numbers
+my_documents = tm_map(my_documents, content_transformer(removePunctuation)) # remove punctuation
+my_documents = tm_map(my_documents, content_transformer(stripWhitespace)) ## remove excess white-space
+
+## Remove stopwords.
+my_documents = tm_map(my_documents, content_transformer(removeWords), stopwords("en"))
+my_documents = tm_map(my_documents, content_transformer(removeWords), stopwords("SMART"))
+
+
+## create a doc-term-matrix
+DTM_author = DocumentTermMatrix(my_documents)
+DTM_author # some basic summary statistics
+
+## Remove sparse terms. Below removes those terms that have count 0 in >95% of docs.
+DTM_author = removeSparseTerms(DTM_author, 0.95)
+
+## construct TF IDF weights
+tfidf_author = weightTfIdf(DTM_author)
+
+
+tfidf_matrix = data.matrix(tfidf_author)
+
+tfidf_dataframe = as.data.frame(tfidf_matrix)
+
+
+X= tfidf_dataframe
+summary(colSums(X))
+scrub_cols = which(colSums(X) == 0)
+X = X[, -scrub_cols]
+```
+
+I started by making a corpus containing all the 2500 documents by 50 authors from the training directory, after which I did some pre-processing and tokenization. I converted everything to lower case, removed numbers, removed punctuations, striped excess white-space, and removed stop words. After tokenization I created a document term matrix which contain 2500 rows, each row representing a document, and 32241 columns, each of which represent a term. I then deleted all the sparse terms. I removed all those terms with zero countsin more that 95% of the documents, after which I was left with 660 terms. I then created matrix of TF-IDF weighs using the document term matrix. 
+
+```{r, message=FALSE, echo=FALSE, warning= FALSE}
+##Princpical Component Analysis
+PCA = prcomp(X, rank =15,scale = TRUE)
+
+summary(PCA)
+
+loadings = PCA$rotation
+scores = as.data.frame(PCA$x)
+
+##putting author names into the scores from PCA
+author_names= list.dirs(path = "~/downloads/ReutersC50/C50train", full.names = FALSE, recursive = FALSE)
+
+scores$author = ""
+initialize= 1
+
+for(author in author_names) {
+  scores[initialize :min(initialize + 49, nrow(scores)),]$author = author
+  initialize = initialize + 50
+}
+```
+
+In the next step, I scrubbed off all the columns with entries equals to zero, after which I was left with 644 columns. Then, I conducted the Principal Component Analysis (PCA) with rank 15. 15 principal components were able to capture 13% variation of the data. After conducting the PCA, I created a new column named ‘author’ and entered author names corresponding to their respective documents. 
+
+```{r, message=FALSE, echo=FALSE, results= FALSE, warning= FALSE}
+##Multinomial logistic regression
+Multi_logit = multinom(author ~ ., data= scores)
+
+
+##Random Forest model
+scores$author <- as.factor(scores$author)
+randomforest = randomForest(author ~ ., data = scores, ntree= 500)
+
+##k nearest neighbors regression
+knn = knnreg(author ~ ., data = scores, k =5, distance = "cosine")
+```
+
+After dimensionality reduction using PCA, I conducted multinomial logistic regression, k-nearest neighbors regression and random forest model with 15 principal components for prediction of author of a particular document.
+
+```{r, message=FALSE, echo=FALSE, results= FALSE, warning= FALSE}
+###For prediction and evaluation in testing set
+
+file_list1 = Sys.glob('../Downloads/ReutersC50/C50test/*/*.txt')
+author1 = lapply(file_list1, readerPlain)
+
+mynames1 = file_list1 %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+
+# Rename the articles
+mynames1
+names(author1) = mynames1
+```
+
+After building the models using training set, I created a corpus from the testing set. The testing data also contained 50 authors and 50 documents per author totaling to 2500 documents. I repeated the tokenization steps and conducted other pre-processing step which I did with the training data, and created a document term matrix. Like before, I removed the terms that had count of zero in more than 95% of the documents and constructed a matrix of TF-IDF weights from document term matrix.  In the next step, I scrubbed off all the columns with entries equals to zero after which I was left with 660 columns. Like for the training set,  I conducted the Principal Component Analysis (PCA) with rank 15. 15 principal components were able to capture 13% variation of the data for the testing set as well. After conducting the PCA, I created a new column named ‘author’ and entered author names corresponding to their respective documents. 
+
+```{r, message=FALSE, echo=FALSE, warning= FALSE}
+## once you have documents in a vector, you 
+## create a text mining 'corpus' with: 
+documents_raw1 = Corpus(VectorSource(author1))
+
+## Some pre-processing/tokenization steps.
+## tm_map just maps some function to every document in the corpus
+my_documents1 = documents_raw1
+my_documents1 = tm_map(my_documents1, content_transformer(tolower)) # make everything lowercase
+my_documents1 = tm_map(my_documents1, content_transformer(removeNumbers)) # remove numbers
+my_documents1 = tm_map(my_documents1, content_transformer(removePunctuation)) # remove punctuation
+my_documents1 = tm_map(my_documents1, content_transformer(stripWhitespace)) ## remove excess white-space
+
+## Remove stopwords.
+my_documents1 = tm_map(my_documents1, content_transformer(removeWords), stopwords("en"))
+my_documents1 = tm_map(my_documents1, content_transformer(removeWords), stopwords("SMART"))
+
+## create a doc-term-matrix
+DTM_author1 = DocumentTermMatrix(my_documents1)
+DTM_author1 # some basic summary statistics
+
+
+## Remove sparse terms. Below removes those terms that have count 0 in >95% of docs.
+DTM_author1 = removeSparseTerms(DTM_author1, 0.95)
+
+## construct TF IDF weights
+tfidf_author1 = weightTfIdf(DTM_author1)
+
+tfidf_matrix1 = data.matrix(tfidf_author1)
+
+tfidf_dataframe1 = as.data.frame(tfidf_matrix1)
+
+
+Y= tfidf_dataframe1
+summary(colSums(Y))
+scrub_cols = which(colSums(Y) == 0)
+Y = Y[, -scrub_cols]
+
+#Princpical Component Analysis
+PCA1 = prcomp(Y, rank =15, scale = TRUE)
+
+summary(PCA1)
+
+loadings1 = PCA1$rotation
+scores1 = as.data.frame(PCA1$x)
+
+##putting author names into the scores from PCA
+author_names= list.dirs(path = "~/downloads/ReutersC50/C50test", full.names = FALSE, recursive = FALSE)
+
+scores1$author = ""
+initialize= 1
+
+for(author in author_names) {
+  scores1[initialize :min(initialize + 49, nrow(scores)),]$author = author
+  initialize = initialize + 50
+}
+```
+
+
+
+### Prediction accuracy of Multinomial logistic regression
+```{r, message=FALSE, echo=FALSE}
+#Prediction
+#Using Multinomial logistic regression
+yhat_test_logit = predict(Multi_logit, newdata = scores1, type= 'class')
+confusion_out_logit = table(author= scores1$author, author_hat= yhat_test_logit)
+sum(diag(confusion_out_logit))/ sum(confusion_out_logit)
+```
+
+### Prediction accuracy of k-nearest neighbours
+```{r, message=FALSE, echo=FALSE}
+#knn
+yhat_test_knn = predict(knn, scores1, type= 'class')
+confusion_out_knn = table(author= scores1$author, author_hat= yhat_test_knn)
+sum(diag(confusion_out_knn))/ sum(confusion_out_knn)
+```
+
+### Prediction accuracy of randomforest
+```{r, message=FALSE, echo=FALSE}
+#randomforest
+yhat_test_rf = predict(randomforest, scores1, type= 'class')
+confusion_out_rf = table(author= scores1$author, author_hat= yhat_test_rf)
+sum(diag(confusion_out_rf))/ sum(confusion_out_rf)
+```
+
+In the next step, I made predictions on the test set using the models which I built using training data. I created confusion matrices for each of the 3 models and calculated accuracy rates. The highest level of accuracy that I could obtain was just 3.5 percetn using random forest 

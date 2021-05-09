@@ -1,0 +1,349 @@
+---
+title: "Predicting heart disease using Machine Learning Models"
+author: "Ashesh Shrestha"
+date: "4/27/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Abstract
+
+In this project I have tried to build the best model in terms of accuracy in order to predict the presence of heart disease in a person. In order to do so I have used data from University of California Irvine (UCI) repository which consists of data related to presence or absence of heart disease along with other 13 demographic and health attributes of 301 individuals. I used several classification models, namely, linear probability model, logistic regression model, bagging model, random forest model and gradient boosting model. Out of all these models, I get the best prediction from random forest model.
+
+
+## Introduction
+
+Heart disease is the leading cause of death in the United States. According to Centerz for Disease Control and Prevention (CDC), about 6550,000 Americans die each year because of heart disease, which is 1 in every 4 deaths in the United States. There are mainly four types of heart disease: i. Coronary artery disease (CAD), ii. Valvular heart disease, iii. Arrhythmia, and iv. Heart failure. CAD is the most common type of heart disease in the United States. CAD is a condition in which plaque grows in the walls of the coronary arteries and limits the flow of blood to the heart’s muscle. It can ultimately lead to heart attack.
+
+In this project, my goal to build a classification model for prediction of heart disease. I have used 4 classification models namely, linear probability model, logistic regression model, random forest model and gradient boosting in order to predict the presence of heart disease in an individual. 
+
+
+## Method
+
+As mentioned above I have used 4 classification models. In order to fit these models I have used data from UCI repository. The database consists of 14 attributes of 301 individuals, out of which about 55 percent suffer from heart disease of one of the four kind mentioned above. However, the heart disease has not been categorized. The data set has simply distinguished the presence of heart diseases from its absence. The various features/attributes used and the values they take are:
+
+
+1.	Age : age of the person
+2.	Sex :(1 if male, 0 if female)
+3.	cp : chest pain type
+        -- Value 0: asymptomatic
+        -- Value 1: atypical angina
+        -- Value 2: non-anginal pain
+        -- Value 3: typical angina
+4.	trestbps : resting blood pressure (in mm Hg on admission to the hospital)
+5.	chol : serum cholesterol in mg/dl
+6.	fbs : fasting blood sugar > 120 mg/dl (1 = true ; 0 =false)
+7.	restecg: resting electrocardiographic result
+        -- Value 0 : normal
+        -- Value 1 : having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV) 
+        -- Value 2 : showing probable or definite left ventricular hypertrophy by Estes' criteria 
+8.	thalach: maximum heart rate achieved 
+9.	exang: exercise induced angina (1 = yes; 0 = no) 
+10.	oldpeak = ST depression induced by exercise relative to rest 
+11.	slope: the slope of the peak exercise ST segment 
+        -- Value 0: downsloping
+        -- Value 1: flat 
+        -- Value 2: upsloping
+12.	ca: number of major vessels (0-4) colored by fluoroscopy 
+13.	thal: A blood disorder called thalassemia 
+        -- Value 1 : fixed defect (no blood flow in some part of the heart)
+        -- Value 2:  normal blood flow
+        -- Value 3:  reversible defect (a blood flow is observed but it is not normal)
+14.	target: presence of heart disease (1=  yes, 0= no)
+
+I have randomly split the data into training and testing sets. The training set which comprises of 80% of the data set has been used for the purpose of building models, whereas rest 20% has been used for testing the accuracy of the models.
+
+## Models and their repective results
+
+
+```{r, message=FALSE, echo=FALSE, results = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(modelr)
+library(rsample)
+library(caret)
+library(foreach)
+library(dummies)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(gbm)
+library(ROSE)
+library(ipred)
+
+heart <- read.csv("~/Downloads/heart.csv")
+
+heart$cp <- as.factor(heart$cp)
+heart$restecg <- as.factor(heart$restecg)
+heart$slope <- as.factor(heart$slope)
+heart$ca <- as.factor(heart$ca)
+heart$thal <- as.factor(heart$thal)
+
+# Splitting data into training and testing sets
+heart_split = initial_split(heart, prop = 0.8)
+heart_train = training(heart_split)
+heart_test = testing(heart_split)
+```
+
+
+### Linear Probability Model without interactions
+
+```{r, message=FALSE, echo=FALSE}
+lm_heart = lm(target ~ age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+              slope + ca + thal, data = heart_train)
+
+coef(lm_heart) %>% round(3)
+
+phat_test_lm_heart = predict(lm_heart, heart_test, type ='response')
+yhat_test_lm_heart = ifelse(phat_test_lm_heart >=0.5, 1, 0)
+confusion_out_linear = table (target = heart_test$target, target_hat= yhat_test_lm_heart)
+confusion_out_linear
+
+```
+
+
+After splitting the data into training and testing sets, I fitted a linear probability model using all of the 13 features without any interactions into the training data. Then, I used the model to make prediction on testing set. In order to test for out-of-sample accuracy, I created a confusion matrix with threshold of 0.5, that is, any prediction above the probability of 0.5 would be considered as presence of heart diseases and any prediction below the probability of 0.5 would be considered as no presence of heart disease. The out of sample accuracy from the confusion matrix is  
+
+```{r, message=FALSE, echo=FALSE}
+sum(diag(confusion_out_linear))/sum(confusion_out_linear) #out of sample accuracy
+```
+
+
+### Linear Probability Model with interactions
+
+```{r, message=FALSE, echo=FALSE, warning= FALSE}
+lm_heart2 = lm(target ~ (age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+                slope + ca + thal)^2, data = heart_train)
+
+phat_test_lm_heart2 = predict(lm_heart2, heart_test, type ='response')
+yhat_test_lm_heart2 = ifelse(phat_test_lm_heart2 >=0.5, 1, 0)
+confusion_out_linear2 = table (target = heart_test$target, target_hat= yhat_test_lm_heart2)
+confusion_out_linear2
+
+sum(diag(confusion_out_linear2))/sum(confusion_out_linear2) #out of sample accuracy
+```
+
+In order to check if  I can improve the out of sample accuracy of the model, I considered a linear probability model with all possible two-way interactions. As a result, I obtained a model with  variables with an intercept. In order to test for out-of-sample accuracy, I again created a confusion matrix with threshold of 0.5, however, the out-of-sample accuracy turned out to be, which is much lower than that of the linear probability model without any interactions. Thus, linear probability model without interactions clearly wins over the linear probability model with all possible two way interactions. 
+
+### Logistic Regression Model without interactions
+
+```{r, message=FALSE, echo=FALSE}
+glm_heart = glm(target ~ age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+                slope + ca + thal, data = heart_train, family = 'binomial')
+
+coef(glm_heart) %>% round(3)
+
+phat_test_logit_heart = predict(glm_heart, heart_test, type ='response')
+yhat_test_logit_heart = ifelse(phat_test_logit_heart >=0.5, 1, 0)
+confusion_out_logit = table (target = heart_test$target, target_hat= yhat_test_logit_heart)
+confusion_out_logit
+
+sum(diag(confusion_out_logit))/sum(confusion_out_logit) #out of sample accuracy
+```
+
+Secondly, I fit logistic regression model on training data using all the 13 variables without any interactions. The, the model was used to make prediction of testing set. Like in linear probability model, I created a confusion matrix with threshold of 0.5. The out of sample accuracy that I found is which is almost equal to that of linear probability model without interactions. 
+
+
+### Logistic Regression Model with interactions
+
+```{r, message=FALSE, echo=FALSE, warning = FALSE}
+glm2_heart = glm(target ~ (age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+                               slope + ca + thal)^2, data = heart_train, family = 'binomial')
+  
+phat_test_logit2_heart = predict(glm2_heart, heart_test, type ='response')
+yhat_test_logit2_heart = ifelse(phat_test_logit2_heart >=0.5, 1, 0)
+confusion_out_logit2 = table (target = heart_test$target, target_hat= yhat_test_logit2_heart)
+confusion_out_logit2
+  
+sum(diag(confusion_out_logit2))/sum(confusion_out_logit2) #out of sample accuracy
+```
+
+Like in the case of linear probability model, I also fit logistic regression with all possible two-way interactions. The out of sample accuracy calculated using the confusion matrix turned out to be much lower than the logistic regression model without any interactions. Hence, the model without interactions is clearly the winner in this case as well.
+
+
+### Linear probability model vs Logistic regression model
+
+As seen above out-of- sample accuracy calculated for the linear probability model and logistic regression model without interaction are almost the same. Therefore, I have taken a slightly more nuanced look at the performance of the classifier that simply calculation an overall accuracy. I have calculated:
+
+- true positive rate (TPR) : among the people who have heart disease (y= 1), how may are correctly identified (ŷ =1)
+- false positive rate (FPR) : among the people who do not have heart disease(y= 0), how many are incorrectly identified as having heart disease (ŷ =1)
+
+The TPR and FPR for the linear probability model are
+```{r, message=FALSE, echo=FALSE}
+#error rates
+##Linear probability model
+confusion_out_linear[2,2]/sum(heart_test$target==1)
+confusion_out_linear[1,2]/sum(heart_test$target==0)
+```
+respectively.
+
+
+The TPR and FPR for the logit model are
+```{r, message=FALSE, echo=FALSE}
+#error rates
+##Linear probability model
+confusion_out_logit[2,2]/sum(heart_test$target==1)
+confusion_out_logit[1,2]/sum(heart_test$target==0)
+```
+respectively.
+
+
+For calculation of  error rates for our heart disease classifier, we used the threshold of 50%.
+
+P(y = 1|x) > 0.5 - presence of heart disease
+
+P(y = 1|x) < 0.5 - no presence of heart disease
+
+
+So, the question is what will happen to the performance and error rates if we vary the threshold. This question is addressed by Receiver Operation Characteristics (ROC) curve. ROC curve is a graph showing the performance of a binary classifier at all classification thresholds. At each threshold, TPR and FPR are computed. The, ROC curve plots TPR v FPR as functions of classification threshold. A ROC curve that is more “up and to the left” represents better performance, i.e. better detection of true positives at a fixed false positive rate. Moreover, we can also report the area under the ROC curve (AUC) as an overall measure of classifier performance. The close the AUC is to 'one', better the performance.
+
+### Figure 1: ROC curve for the Linear Probability Model 
+```{r, message=FALSE, echo=FALSE}
+#ROC curve
+## for linear probability model
+roc.curve(heart_test$target, phat_test_lm_heart)
+```
+
+### Figure 2: ROC curve for the Logistic Regression Model 
+```{r, message=FALSE, echo=FALSE}
+## for logit model
+roc.curve(heart_test$target, phat_test_logit_heart)
+```
+
+To measure the relative performance across various classification threshold, I made ROC curves for both linear probability model and logistic regression model. I have reported AUC as the overall measure of performance. The AUC of the linear probability model is slightly higher that the AUC of logistic regression model. 
+
+Thus, we conclude that the better model out of the two is the linear probability model. 
+
+## Tree based models
+
+The major advantage of using decision trees is that they are intuitively easy to interpret and they can automatically detect non-linearities and interactions. However, the decision trees lack prediction accuracy. We can get a largely different decision tree with change in data. If we use split out data into multiple training sets, the structure of the tree might significantly differ for each training sets.
+
+In order to overcome this limitation, we can aggregate across many decision trees. Aggregation techniques like bagging, random forest and boosting can help us improve the prediction accuracy significantly.
+
+```{r, message=FALSE, echo=FALSE}
+# tell R that sex, fbs, exang and target are categorical variables for random forest model
+
+heart_train$sex <- as.factor(heart_train$sex)
+heart_test$sex <- as.factor(heart_test$sex)
+heart_train$fbs <- as.factor(heart_train$fbs)
+heart_test$fbs <- as.factor(heart_test$fbs)
+heart_train$exang <- as.factor(heart_train$exang)
+heart_test$exang <- as.factor(heart_test$exang)
+heart_train$target <- as.factor(heart_train$target)
+heart_test$target <- as.factor(heart_test$target)
+```
+
+## Bagging
+
+The first tree related model which I fit is bagging or bootstrap aggregating model. As the name suggests, bagging involves taking multiple bootstrap sample from the training data and  fitting a classification tree for each bootstrap sample. Finally, prediction is done by averaging predictions from all the trees obtained from each bootstrap samples. 
+
+```{r, message=FALSE, echo=FALSE}
+#Bagging model
+bagging_heart = bagging(target ~ age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+                          slope + ca + thal, data = heart_train, nbagg=500) 
+
+yhat_test_bagging_heart = predict(bagging_heart, heart_test, type = "class")
+confusion_out_bagging_heart = table(target= heart_test$target, target_hat= yhat_test_bagging_heart)
+confusion_out_bagging_heart
+```
+
+For a threshold of 0.5, the out-of-sample accuracy for the bagging model is 
+```{r, message=FALSE, echo=FALSE}
+sum(diag(confusion_out_bagging_heart))/sum(confusion_out_bagging_heart)
+```
+
+
+The TPR and FPR are
+```{r, message=FALSE, echo=FALSE}
+confusion_out_bagging_heart[2,2]/sum(heart_test$target==1)
+confusion_out_bagging_heart[1,2]/sum(heart_test$target==0)
+```
+respectively.
+
+### Figure 3: ROC curve for the Tree Bagging Model
+```{r, message=FALSE, echo=FALSE}
+#ROC curve
+yhat_test_bagging = predict(bagging_heart, heart_test, type = "prob")
+roc.curve(heart_test$target, yhat_test_bagging[,2])
+```
+
+
+## Random Forest Model
+
+Random forest model is very similar to bagging except for it adds more randomness. We still build a number of trees on bootstrap samples, but instead of all the feature variables m , a random subset of m<p is chosen as split candidates from the full set of m variables each time a split in a tree is considered.
+
+```{r, message=FALSE, echo=FALSE}
+randomforest_heart = randomForest(target ~ age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+                                    slope + ca + thal, data = heart_train, ntree= 500)
+
+yhat_test_rf_heart = predict(randomforest_heart, heart_test, type ="response")
+confusion_out_rf_heart = table (target = heart_test$target, target_hat= yhat_test_rf_heart)
+confusion_out_rf_heart
+```
+
+For a threshold of 0.5, the out-of-sample accuracy for the random forest model is 
+```{r, message=FALSE, echo=FALSE}
+sum(diag(confusion_out_rf_heart))/sum(confusion_out_rf_heart) #out of sample accuracy
+```
+
+
+The TPR and FPR are
+```{r, message=FALSE, echo=FALSE}
+confusion_out_rf_heart[2,2]/sum(heart_test$target==1)
+confusion_out_rf_heart[1,2]/sum(heart_test$target==0)
+```
+respectively.
+
+### Figure 4: ROC curve for the Random Forest Model 
+```{r, message=FALSE, echo=FALSE}
+#ROC curve
+yhat_test_rf = predict(randomforest_heart, heart_test, type ="prob")
+roc.curve(heart_test$target, yhat_test_rf[,2])
+```
+
+
+## Boosting model
+
+The last model that I use is Boosting model. Boosting is also an ensemble method like random forest in which overall fit is produced from many trees. However, it is quite different. Trees are grown sequentially by using the information from previously grown trees, In boosting, we fit the data with a single tree, then crush the tree so that it does not fit very well. Then, by using the part of the target variable not captured by the crushed tree, we fit a new tree. Our new fit is sum of the two trees. This process is conducted repeatedly and our final fit is sum of the many tree thus created.
+
+```{r, message=FALSE, echo=FALSE}
+#Boosting
+heart_train$target <- as.character(heart_train$target)
+heart_test$target <- as.character(heart_test$target)
+boost_heart = gbm(target ~ age + sex + cp + trestbps + chol  + fbs + restecg + thalach + exang + oldpeak +
+                    slope + ca + thal, data = heart_train, distribution ="bernoulli", interaction.depth = 4,
+                  n.trees= 300, shrinkage =.05)
+
+phat_test_boost_heart = predict(boost_heart, heart_test, type ="response")
+yhat_test_boost_heart = ifelse(phat_test_boost_heart >=0.5, 1, 0)
+confusion_out_boost = table (target = heart_test$target, target_hat= yhat_test_boost_heart)
+confusion_out_boost
+```
+
+For a threshold of 0.5, the out-of-sample accuracy for the random forest model is
+```{r, message=FALSE, echo=FALSE}
+sum(diag(confusion_out_boost))/sum(confusion_out_boost) #out of sample accuracy
+```
+
+
+The TPR and FPR are
+```{r, message=FALSE, echo=FALSE}
+confusion_out_boost[2,2]/sum(heart_test$target==1)
+confusion_out_boost[1,2]/sum(heart_test$target==0)
+```
+respectively.
+
+### Figure 5: ROC curve for the Boosting Model 
+```{r, message=FALSE, echo=FALSE}
+#ROC curve
+roc.curve(heart_test$target, phat_test_boost_heart)
+```
+
+
+## Conclusion
+
+From the results based on the analyses made above, we can conclude that random forest model made the most accurate prediction. However, I have to acknowledge the fact that the other models were not very far behind in terms of accuracy. Looking at the accuracy level of linear probability model, there is a possibility that for a different training and testing split it could be the winner. Usually, tree based models perform better than linear probability model or logistic regression model, but owing to low number of observations, linear probability model has performed better that bagging and gradient boosting model, and the random forest model has performed only marginally better than linear probability model.
